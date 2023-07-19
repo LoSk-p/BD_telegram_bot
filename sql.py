@@ -2,13 +2,15 @@ import sqlite3
 import os
 import logging
 
+from config.config import BD_NAME
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
 class DataDB:
-    def __init__(self, name: str = "data.db"):
+    def __init__(self, name: str = BD_NAME):
         self.con = None
         self.cur = None
         self.name = name
