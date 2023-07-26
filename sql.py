@@ -1,6 +1,9 @@
+from dataclasses import dataclass
 import sqlite3
 import os
 import logging
+import typing as tp
+from dataclasses import dataclass
 
 from config.config import BD_NAME
 
@@ -9,11 +12,24 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+@dataclass
+class Material:
+    caption: tp.Optional[str] = None
+    text: tp.Optional[str] = None
+    file: tp.Optional[bytes] = None
+    filename: tp.Optional[str] = None
+    picture: tp.Optional[bytes] = None
+    sent: str = "False"
+
+    def get_list(self, number: int):
+        return [number, self.caption, self.text, self.file, self.filename, self.picture, self.sent]
+
 class DataDB:
     def __init__(self, name: str = BD_NAME):
         self.con = None
         self.cur = None
         self.name = name
+        self.material_data = None
         if not os.path.isfile(name):
             self.create_new_bd(name)
         else:
@@ -32,6 +48,50 @@ class DataDB:
             logging.info(f"Connection to BD {self.name} was closed")
             return res
         return wrapper
+
+    def create_material(self, caption: tp.Optional[str] = None,
+                        text: tp.Optional[str] = None,
+                        file: tp.Optional[bytes] = None,
+                        filename: tp.Optional[str] = None,
+                        picture: tp.Optional[bytes] = None):
+        self.material_data = Material(caption, text, file, filename, picture)
+
+    def update_material(self, caption: tp.Optional[str] = None,
+                        text: tp.Optional[str] = None,
+                        file: tp.Optional[bytes] = None,
+                        filename: tp.Optional[str] = None,
+                        picture: tp.Optional[bytes] = None):
+        if self.material_data is not None:
+            if caption is not None:
+                self.material_data.caption = caption
+            if text is not None:
+                self.material_data.text = text
+            if file is not None:
+                self.material_data.file = file
+            if filename is not None:
+                self.material_data.filename = filename
+            if picture is not None:
+                self.material_data.picture = picture
+        else:
+            self.create_material(caption, text, file, filename, picture)
+
+    @connect_bd
+    def add_material(self):
+        next_number = self._get_rows_number_materials()
+        fields = self.material_data.get_list(next_number)
+        self.cur.execute("INSERT INTO materials VALUES(?,?,?,?,?,?,?)", fields)
+        self.con.commit()
+        self.material_data = None
+
+    @connect_bd
+    def delete_material(self, number: int):
+        materials_number = self._get_rows_number_materials()
+        self.cur.execute("DELETE FROM materials WHERE number LIKE ?", [number])
+        i = number + 1
+        while i < materials_number:
+            self.cur.execute("UPDATE materials SET number = ? WHERE number LIKE ?", [str(i - 1), str(i)])
+            i += 1
+        self.con.commit()
 
     @connect_bd
     def create_new_bd(self, name: str):
@@ -75,6 +135,12 @@ class DataDB:
             res = self.cur.execute("SELECT number, caption, text, file, filename, picture FROM materials WHERE number LIKE ?", str(max_number - 1 - i))
             result.append(res.fetchall()[0])
         return self._format_rows(result)
+
+    @connect_bd
+    def delete_user(self, user_id: str):
+        self.cur.execute("DELETE FROM users WHERE user_id LIKE ?", [user_id])
+        self.con.commit()
+        logging.info(f"User {user_id} was deleted")
     
     def _get_users(self) -> list:
         res = self.cur.execute("SELECT user_id FROM users")
