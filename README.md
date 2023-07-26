@@ -5,6 +5,7 @@ Create file ```config.py``` in ```config``` directory using [config_template.py]
 ## Docker
 
 ```bash
+docker build -t telegram-bot-db .
 docker run -d --name telegram-bot-db -v /<path_to_repo>/DB_telegram_bot/data:/data telegram-bot-db
 ```
 
